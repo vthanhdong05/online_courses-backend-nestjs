@@ -13,8 +13,7 @@ const initOpenAPI = (app: INestApplication) => {
       .setVersion('1.0.0')
       .build(),
   );
-
-  SwaggerModule.setup('api', app, cleanupOpenApiDoc(openApiDoc));
+  SwaggerModule.setup('api-docs', app, cleanupOpenApiDoc(openApiDoc));
 };
 
 const initApp = (app: INestApplication) => {
@@ -27,6 +26,8 @@ const initApp = (app: INestApplication) => {
   }
   applyMiddleware(app);
   initOpenAPI(app);
+
+  app.enableShutdownHooks();
 
   return app;
 };
