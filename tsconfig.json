@@ -20,6 +20,8 @@
     "forceConsistentCasingInFileNames": true,
     "noImplicitAny": false,
     "strictBindCallApply": false,
-    "noFallthroughCasesInSwitch": false
+    "noFallthroughCasesInSwitch": false,
+    "lib": ["ES2024", "DOM"],
+    "types": ["node", "express", "jest"]
   }
 }
