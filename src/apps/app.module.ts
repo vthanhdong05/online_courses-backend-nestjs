@@ -1,14 +1,22 @@
 import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
 import { APP_FILTER, APP_INTERCEPTOR } from '@nestjs/core';
 import { CatchEverythingFilter } from 'src/common/catch-everything/catch-everything.filter';
+import { LoggerModule } from 'src/common/logger/logger.module';
 import { LoggingInterceptor } from 'src/common/logger/logging.interceptor';
+import { ApiUtilModule } from 'src/common/utils/api-util/api-util.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { LoggerModule } from 'src/common/logger/logger.module';
-import { ApiUtilModule } from 'src/common/utils/api-util/api-util.module';
 
 @Module({
-  imports: [LoggerModule, ApiUtilModule],
+  imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+      expandVariables: true,
+    }),
+    LoggerModule,
+    ApiUtilModule,
+  ],
   controllers: [AppController],
   providers: [
     AppService,
