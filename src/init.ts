@@ -1,4 +1,4 @@
-import { INestApplication } from '@nestjs/common';
+import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { cleanupOpenApiDoc } from 'nestjs-zod';
 import { applyMiddleware } from './common/middleware/common.middleware';
@@ -26,6 +26,8 @@ const initApp = (app: INestApplication) => {
   }
   applyMiddleware(app);
   initOpenAPI(app);
+
+  app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
 
   app.enableShutdownHooks();
 
