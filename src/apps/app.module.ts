@@ -7,6 +7,7 @@ import { LoggingInterceptor } from 'src/common/logger/logging.interceptor';
 import { ApiUtilModule } from 'src/common/utils/api-util/api-util.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { DatabaseModule } from 'src/common/database/plugins/database.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { AppService } from './app.service';
     }),
     LoggerModule,
     ApiUtilModule,
+    DatabaseModule,
   ],
   controllers: [AppController],
   providers: [
