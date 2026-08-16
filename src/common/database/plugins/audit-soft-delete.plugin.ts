@@ -15,11 +15,10 @@ export function auditSoftDeletePlugin(schema: Schema) {
 
   // Tự động lọc bản ghi đã xoá mềm cho mọi find/findOne/count/findOneAndUpdate,
   // trừ khi query đã tự chỉ định deletedAt (VD: muốn lấy cả bản ghi đã xoá).
-  const excludeDeleted = function (this: any, next: () => void) {
+  const excludeDeleted = function (this: any) {
     if (this.getFilter().deletedAt === undefined) {
       this.where({ deletedAt: null });
     }
-    next();
   };
   schema.pre(/^find/, excludeDeleted);
 
