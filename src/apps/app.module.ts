@@ -10,6 +10,7 @@ import { ApiUtilModule } from 'src/common/utils/api-util/api-util.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { UsersModule } from './users/users.module';
+import { ExcelUtilModule } from 'src/common/utils/excel-util/excel-util.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { UsersModule } from './users/users.module';
     LoggerModule,
     ApiUtilModule,
     DatabaseModule,
+    ExcelUtilModule,
     UsersModule,
   ],
   controllers: [AppController],

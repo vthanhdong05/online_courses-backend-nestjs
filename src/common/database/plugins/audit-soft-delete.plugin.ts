@@ -13,14 +13,25 @@ export function auditSoftDeletePlugin(schema: Schema) {
     schema.add({ deletedAt: { type: Date, default: null } });
   }
 
-  // Tự động lọc bản ghi đã xoá mềm cho mọi find/findOne/count/findOneAndUpdate,
+  // Tự động lọc bản ghi đã xoá mềm cho mọi find/findOne/countDocuments/findOneAndUpdate/distinct...,
   // trừ khi query đã tự chỉ định deletedAt (VD: muốn lấy cả bản ghi đã xoá).
   const excludeDeleted = function (this: any) {
     if (this.getFilter().deletedAt === undefined) {
       this.where({ deletedAt: null });
     }
   };
-  schema.pre(/^find/, excludeDeleted);
+
+  schema.pre(/^(find|count|distinct)/, excludeDeleted);
+
+  schema.pre('aggregate', function (this: any) {
+    const pipeline = this.pipeline();
+    const hasDeletedAtFilter = pipeline.some(
+      (stage: any) => stage.$match && stage.$match.deletedAt !== undefined,
+    );
+    if (!hasDeletedAtFilter) {
+      pipeline.unshift({ $match: { deletedAt: null } });
+    }
+  });
 
   // Static method dùng chung cho mọi model, gọi thẳng từ Service, VD: this.userModel.softDeleteById(id)
   schema.statics.softDeleteById = function (id: string) {

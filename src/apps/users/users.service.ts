@@ -1,19 +1,34 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import * as bcrypt from 'bcrypt';
+import { Workbook } from 'exceljs';
 import type { QueryFilter } from 'mongoose';
+import { ExcelUtilService } from 'src/common/utils/excel-util/excel-util.service';
+import type { File } from '../../common/utils/excel-util/dto/excel-util.interface';
 import { CreateUserDto } from './dto/create-user.dto';
 import { GetUsersQueryDto } from './dto/get-users.dto';
+import { ImportUserErrorDto, ImportUsersResultDto } from './dto/import-users-result.dto';
 import { RegisterStudentDto } from './dto/register-student.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import type { UserModel } from './schemas/user.schema';
-import { User, UserDocument, UserRole } from './schemas/user.schema';
+import { User, UserDocument, UserRole, UserStatus } from './schemas/user.schema';
 
 const SALT_ROUNDS = 10;
 
+const EXPORT_FIELDS = ['email', 'fullName', 'phone', 'role', 'status', 'createdAt'];
+interface ImportUserRow {
+  email?: string;
+  password?: string;
+  fullName?: string;
+  phone?: string;
+  role?: string;
+}
 @Injectable()
 export class UsersService {
-  constructor(@InjectModel(User.name) private readonly userModel: UserModel) {}
+  constructor(
+    @InjectModel(User.name) private readonly userModel: UserModel,
+    private readonly excelUtilService: ExcelUtilService,
+  ) {}
 
   async create(dto: CreateUserDto): Promise<UserDocument> {
     if (dto.role === UserRole.STUDENT) {
@@ -99,5 +114,82 @@ export class UsersService {
       throw new NotFoundException(`Không tìm thấy user với id ${id} (hoặc chưa từng bị xoá)`);
     }
     return user;
+  }
+
+  private buildFilter({ role, status, email }: GetUsersQueryDto): QueryFilter<UserDocument> {
+    const filter: QueryFilter<UserDocument> = {};
+    if (role) filter.role = role;
+    if (status) filter.status = status;
+    if (email) filter.email = { $regex: email.trim(), $options: 'i' };
+    return filter;
+  }
+
+  async exportUsers(query: GetUsersQueryDto): Promise<Workbook> {
+    const filter = this.buildFilter(query);
+    const users = await this.userModel.find(filter).sort({ createdAt: -1 }).lean().exec();
+
+    return this.excelUtilService.generateExcel({
+      worksheets: [
+        {
+          sheetName: 'Users',
+          data: users.map((user) => ({
+            email: user.email,
+            fullName: user.fullName,
+            phone: user.phone ?? '',
+            role: user.role,
+            status: user.status,
+            createdAt: (user as any).createdAt,
+          })),
+          fieldsInclude: EXPORT_FIELDS,
+        },
+      ],
+    });
+  }
+
+  async importUsers(file: File): Promise<ImportUsersResultDto> {
+    const rows = (await this.excelUtilService.read(file)) as ImportUserRow[];
+
+    const errors: ImportUserErrorDto[] = [];
+    let successCount = 0;
+
+    for (const [index, row] of rows.entries()) {
+      const rowNumber = index + 2; // +2: bù dòng header + index 0-based
+      const email = row.email?.toLowerCase().trim();
+
+      try {
+        if (!email || !row.password || !row.fullName) {
+          throw new Error('Thiếu email, password hoặc fullName');
+        }
+        const role =
+          row.role && Object.values(UserRole).includes(row.role as UserRole)
+            ? (row.role as UserRole)
+            : UserRole.STAFF;
+
+        const existing = await this.userModel.findOne({ email });
+        if (existing) {
+          throw new Error(`Email ${email} đã được sử dụng`);
+        }
+
+        const hashedPassword = await bcrypt.hash(row.password, SALT_ROUNDS);
+        await new this.userModel({
+          email,
+          password: hashedPassword,
+          fullName: row.fullName,
+          phone: row.phone,
+          role,
+          status: UserStatus.ACTIVE,
+        }).save();
+
+        successCount += 1;
+      } catch (error) {
+        errors.push({
+          row: rowNumber,
+          email: email ?? '(không có email)',
+          reason: error instanceof Error ? error.message : 'Lỗi không xác định',
+        });
+      }
+    }
+
+    return { successCount, failedCount: errors.length, errors };
   }
 }
