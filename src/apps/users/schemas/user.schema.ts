@@ -43,7 +43,7 @@ export class User {
   @Prop()
   createdBy?: string;
 
-  @Prop({ default: null })
+  @Prop({ type: Date, default: null })
   deletedAt?: Date | null;
 }
 
