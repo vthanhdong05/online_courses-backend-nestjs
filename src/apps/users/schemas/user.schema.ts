@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document } from 'mongoose';
+import { Document, Model } from 'mongoose';
 
 export enum UserRole {
   ADMIN = 'admin',
@@ -48,3 +48,8 @@ export class User {
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);
+
+export interface UserModel extends Model<UserDocument> {
+  softDeleteById(id: string): Promise<UserDocument | null>;
+  restoreById(id: string): Promise<UserDocument | null>;
+}

@@ -3,12 +3,14 @@ import { ConfigModule } from '@nestjs/config';
 import { APP_FILTER, APP_INTERCEPTOR } from '@nestjs/core';
 import { CatchEverythingFilter } from 'src/common/catch-everything/catch-everything.filter';
 import { DatabaseModule } from 'src/common/database/plugins/database.module';
+import { FormatResponseInterceptor } from 'src/common/interceptors/format-response/format-response.interceptor';
 import { LoggerModule } from 'src/common/logger/logger.module';
 import { LoggingInterceptor } from 'src/common/logger/logging.interceptor';
 import { ApiUtilModule } from 'src/common/utils/api-util/api-util.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { FormatResponseInterceptor } from 'src/common/interceptors/format-response/format-response.interceptor';
+import { UsersModule } from './users/users.module';
+import { ExcelUtilModule } from 'src/common/utils/excel-util/excel-util.module';
 
 @Module({
   imports: [
@@ -19,6 +21,8 @@ import { FormatResponseInterceptor } from 'src/common/interceptors/format-respon
     LoggerModule,
     ApiUtilModule,
     DatabaseModule,
+    ExcelUtilModule,
+    UsersModule,
   ],
   controllers: [AppController],
   providers: [
