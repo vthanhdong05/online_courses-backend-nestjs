@@ -12,6 +12,11 @@ export enum UserStatus {
   INACTIVE = 'inactive',
 }
 
+export enum UserProvider {
+  LOCAL = 'local',
+  GOOGLE = 'google',
+}
+
 export type UserDocument = User & Document;
 
 @Schema({
@@ -22,8 +27,8 @@ export class User {
   @Prop({ required: true, unique: true, trim: true, lowercase: true })
   email!: string;
 
-  @Prop({ required: true, select: false })
-  password!: string;
+  @Prop({ required: false, select: false })
+  password?: string;
 
   @Prop({ required: true, trim: true })
   fullName!: string;
@@ -39,6 +44,15 @@ export class User {
 
   @Prop({ type: String, enum: UserStatus, default: UserStatus.ACTIVE })
   status!: UserStatus;
+
+  @Prop({ type: String, enum: UserProvider, default: UserProvider.LOCAL })
+  provider!: UserProvider;
+
+  @Prop({ type: String, required: false, index: { unique: true, sparse: true } })
+  googleId?: string;
+
+  @Prop({ type: String, required: false, select: false })
+  resetToken?: string | null;
 
   @Prop()
   createdBy?: string;

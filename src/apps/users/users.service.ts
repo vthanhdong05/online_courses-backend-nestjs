@@ -11,7 +11,7 @@ import { ImportUserErrorDto, ImportUsersResultDto } from './dto/import-users-res
 import { RegisterStudentDto } from './dto/register-student.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import type { UserModel } from './schemas/user.schema';
-import { User, UserDocument, UserRole, UserStatus } from './schemas/user.schema';
+import { User, UserDocument, UserProvider, UserRole, UserStatus } from './schemas/user.schema';
 
 const SALT_ROUNDS = 10;
 
@@ -88,8 +88,69 @@ export class UsersService {
     return user;
   }
 
+  async findByEmail(email: string): Promise<UserDocument | null> {
+    return this.userModel.findOne({ email: email.toLowerCase().trim() });
+  }
+
   async findByEmailWithPassword(email: string): Promise<UserDocument | null> {
     return this.userModel.findOne({ email: email.toLowerCase().trim() }).select('+password');
+  }
+
+  async isSuperAdmin(userId: string): Promise<boolean> {
+    const user = await this.userModel.findById(userId);
+    return user?.role === UserRole.ADMIN;
+  }
+
+  async findByGoogleId(googleId: string): Promise<UserDocument | null> {
+    return this.userModel.findOne({ googleId });
+  }
+
+  async findOrCreateFromGoogle(profile: {
+    googleId: string;
+    email: string;
+    fullName?: string;
+    avatar?: string;
+  }): Promise<UserDocument> {
+    const email = profile.email.toLowerCase().trim();
+    const user = await this.userModel.findOne({
+      $or: [{ googleId: profile.googleId }, { email }],
+    });
+
+    if (user) {
+      if (!user.googleId) {
+        user.googleId = profile.googleId;
+        user.provider = UserProvider.GOOGLE;
+        if (profile.avatar && !user.avatar) user.avatar = profile.avatar;
+        await user.save();
+      }
+      return user;
+    }
+
+    const created = new this.userModel({
+      email,
+      fullName: profile.fullName || email.split('@')[0],
+      avatar: profile.avatar,
+      role: UserRole.STUDENT,
+      status: UserStatus.ACTIVE,
+      provider: UserProvider.GOOGLE,
+      googleId: profile.googleId,
+    });
+    return created.save();
+  }
+
+  async setResetToken(userId: string, token: string | null): Promise<void> {
+    await this.userModel.findByIdAndUpdate(userId, { resetToken: token });
+  }
+
+  async findByResetToken(token: string): Promise<UserDocument | null> {
+    return this.userModel.findOne({ resetToken: token }).select('+resetToken');
+  }
+
+  async updatePassword(userId: string, hashedPassword: string): Promise<void> {
+    await this.userModel.findByIdAndUpdate(userId, {
+      password: hashedPassword,
+      resetToken: null,
+    });
   }
 
   async update(id: string, dto: UpdateUserDto): Promise<UserDocument> {
