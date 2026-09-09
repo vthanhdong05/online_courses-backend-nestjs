@@ -13,6 +13,7 @@ import { AppService } from './app.service';
 import { AuthGuard } from './auth/auth.guard';
 import { AuthModule } from './auth/auth.module';
 import { CategoriesModule } from './categories/categories.module';
+import { InstructorsModule } from './instructors/instructors.module';
 import { UserCategoryRolesModule } from './user-category-roles/user-category-roles.module';
 import { UsersModule } from './users/users.module';
 
@@ -28,6 +29,7 @@ import { UsersModule } from './users/users.module';
     ExcelUtilModule,
     UsersModule,
     CategoriesModule,
+    InstructorsModule,
     UserCategoryRolesModule,
     AuthModule,
   ],
