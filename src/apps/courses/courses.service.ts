@@ -1,13 +1,22 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { QueryFilter, Types } from 'mongoose';
 import { CategoriesService } from '../categories/categories.service';
 import { InstructorsService } from '../instructors/instructors.service';
+import { ChangeCourseStatusDto } from './dto/change-course-status.dto';
 import { CreateCourseDto } from './dto/create-course.dto';
 import { GetCoursesQueryDto } from './dto/get-courses.dto';
 import { UpdateCourseDto } from './dto/update-course.dto';
+import type { ICoursePublishValidator } from './interfaces/course-publish-validator.interface';
+import { COURSE_PUBLISH_VALIDATOR } from './interfaces/course-publish-validator.interface';
 import type { CourseModel } from './schemas/course.schema';
 import { Course, CourseDocument, CourseStatus } from './schemas/course.schema';
+
+const VALID_TRANSITIONS: Record<CourseStatus, CourseStatus[]> = {
+  [CourseStatus.DRAFT]: [CourseStatus.READY],
+  [CourseStatus.READY]: [CourseStatus.DRAFT, CourseStatus.PUBLISHED],
+  [CourseStatus.PUBLISHED]: [CourseStatus.READY],
+};
 
 @Injectable()
 export class CoursesService {
@@ -15,6 +24,8 @@ export class CoursesService {
     @InjectModel(Course.name) private readonly courseModel: CourseModel,
     private readonly categoriesService: CategoriesService,
     private readonly instructorsService: InstructorsService,
+    @Inject(COURSE_PUBLISH_VALIDATOR)
+    private readonly coursePublishValidator: ICoursePublishValidator,
   ) {}
 
   async create(dto: CreateCourseDto): Promise<CourseDocument> {
@@ -118,6 +129,24 @@ export class CoursesService {
       throw new NotFoundException(`Course with id ${id} not found`);
     }
     return course;
+  }
+
+  async changeStatus(id: string, dto: ChangeCourseStatusDto): Promise<CourseDocument> {
+    const course = await this.findOne(id);
+    const allowedNext = VALID_TRANSITIONS[course.status];
+
+    if (!allowedNext.includes(dto.status)) {
+      throw new BadRequestException(
+        `Cannot transition course status from ${course.status} to ${dto.status}`,
+      );
+    }
+
+    if (dto.status === CourseStatus.PUBLISHED) {
+      await this.coursePublishValidator.validate(id);
+    }
+
+    course.status = dto.status;
+    return course.save();
   }
 
   async assertExists(id: string): Promise<CourseDocument> {

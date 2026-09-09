@@ -4,6 +4,7 @@ import { ParseObjectIdPipe } from 'src/common/pipes/parse-object-id.pipe';
 import { SkipAuth } from '../auth/auth.decorator';
 import { CoursesService } from './courses.service';
 import { CourseResponseDto, PaginatedCoursesResponseDto } from './dto/course-response.dto';
+import { ChangeCourseStatusDto } from './dto/change-course-status.dto';
 import { CreateCourseDto } from './dto/create-course.dto';
 import { GetCoursesQueryDto } from './dto/get-courses.dto';
 import { UpdateCourseDto } from './dto/update-course.dto';
@@ -51,6 +52,19 @@ export class CoursesController {
     @Body() dto: UpdateCourseDto,
   ): Promise<CourseResponseDto> {
     const course = await this.coursesService.update(id, dto);
+    return CourseResponseDto.fromDocument(course);
+  }
+
+  @SkipAuth()
+  @Patch(':id/status')
+  @ApiOperation({
+    summary: 'Chuyển trạng thái Khóa học theo State Machine (draft -> ready -> published)',
+  })
+  async changeStatus(
+    @Param('id', ParseObjectIdPipe) id: string,
+    @Body() dto: ChangeCourseStatusDto,
+  ): Promise<CourseResponseDto> {
+    const course = await this.coursesService.changeStatus(id, dto);
     return CourseResponseDto.fromDocument(course);
   }
 
