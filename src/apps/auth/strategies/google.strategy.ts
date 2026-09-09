@@ -12,7 +12,7 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
       clientSecret: configService.get<string>('GOOGLE_CLIENT_SECRET', 'placeholder_client_secret'),
       callbackURL: configService.get<string>(
         'GOOGLE_CALLBACK_URL',
-        'http://localhost:3000/api/auth/google/callback',
+        'http://localhost:9999/api/auth/google/callback',
       ),
       scope: ['email', 'profile'],
     });
@@ -27,5 +27,6 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
       avatar: photos?.[0]?.value,
     };
     done(null, googleUser);
+    return googleUser;
   }
 }
