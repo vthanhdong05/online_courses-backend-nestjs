@@ -1,10 +1,12 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Types } from 'mongoose';
-import { CourseStatus } from '../courses/schemas/course.schema';
 import { CoursesService } from '../courses/courses.service';
+import { CourseStatus } from '../courses/schemas/course.schema';
 import { EnrollmentsService } from '../enrollments/enrollments.service';
 import { AccessType } from '../enrollments/schemas/enrollment.schema';
+import { SubscriptionPlansService } from '../subscription-plans/subscription-plans.service';
+import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import type { OrderModel } from './schemas/order.schema';
 import { Order, OrderDocument, OrderStatus, OrderType } from './schemas/order.schema';
@@ -15,6 +17,8 @@ export class OrdersService {
     @InjectModel(Order.name) private readonly orderModel: OrderModel,
     private readonly coursesService: CoursesService,
     private readonly enrollmentsService: EnrollmentsService,
+    private readonly subscriptionPlansService: SubscriptionPlansService,
+    private readonly subscriptionsService: SubscriptionsService,
   ) {}
 
   async create(studentId: string, dto: CreateOrderDto): Promise<OrderDocument> {
@@ -22,7 +26,34 @@ export class OrdersService {
       throw new BadRequestException(`Student ID không hợp lệ: ${studentId}`);
     }
 
-    const course = await this.coursesService.findOne(dto.courseId);
+    // Validation: Bắt buộc chọn đúng 1 trong 2 (courseId hoặc subscriptionPlanId)
+    if (dto.courseId && dto.subscriptionPlanId) {
+      throw new BadRequestException(
+        'Đơn hàng chỉ được chọn 1 trong 2: mua khóa học lẻ (courseId) HOẶC mua gói VIP (subscriptionPlanId)',
+      );
+    }
+    if (!dto.courseId && !dto.subscriptionPlanId) {
+      throw new BadRequestException(
+        'Vui lòng cung cấp courseId (mua khóa học) hoặc subscriptionPlanId (mua gói VIP)',
+      );
+    }
+
+    // Xử lý loại đơn mua Gói VIP (type = subscription)
+    if (dto.subscriptionPlanId) {
+      const plan = await this.subscriptionPlansService.findOne(dto.subscriptionPlanId);
+      const createdSubOrder = new this.orderModel({
+        studentId: new Types.ObjectId(studentId),
+        type: OrderType.SUBSCRIPTION,
+        subscriptionPlanId: new Types.ObjectId(dto.subscriptionPlanId),
+        amount: plan.price,
+        status: OrderStatus.PENDING,
+      });
+      return createdSubOrder.save();
+    }
+
+    // Xử lý loại đơn mua Khóa học lẻ (type = course)
+    const courseId = dto.courseId!;
+    const course = await this.coursesService.findOne(courseId);
 
     // Business Rule 1: Course phải ở trạng thái PUBLISHED
     if (course.status !== CourseStatus.PUBLISHED) {
@@ -32,7 +63,7 @@ export class OrdersService {
     }
 
     // Business Rule 2: Student chưa có Enrollment active cho course đó (tránh mua trùng)
-    const isEnrolled = await this.enrollmentsService.isEnrolled(studentId, dto.courseId);
+    const isEnrolled = await this.enrollmentsService.isEnrolled(studentId, courseId);
     if (isEnrolled) {
       throw new BadRequestException(
         'Học viên đã đăng ký khóa học này rồi, không thể tạo thêm đơn mua mới',
@@ -43,7 +74,7 @@ export class OrdersService {
     const created = new this.orderModel({
       studentId: new Types.ObjectId(studentId),
       type: OrderType.COURSE,
-      courseId: new Types.ObjectId(dto.courseId),
+      courseId: new Types.ObjectId(courseId),
       amount: course.price,
       status: OrderStatus.PENDING,
     });
@@ -61,7 +92,7 @@ export class OrdersService {
       throw new NotFoundException(`Order with id ${orderId} not found`);
     }
 
-    // Idempotent Check: Nếu đơn đã PAID rồi -> trả về ngay kết quả hiện tại, không lỗi, không tạo Enrollment lần 2
+    // Idempotent Check: Nếu đơn đã PAID rồi -> trả về ngay kết quả hiện tại
     if (order.status === OrderStatus.PAID) {
       return order;
     }
@@ -78,12 +109,21 @@ export class OrdersService {
     order.paidAt = new Date();
     const savedOrder = await order.save();
 
-    // Nối Order -> Enrollment
+    // Nối Order -> Enrollment (Nếu là mua khóa học lẻ)
     if (order.type === OrderType.COURSE && order.courseId) {
       await this.enrollmentsService.createEnrollment(
         order.studentId.toString(),
         order.courseId.toString(),
         AccessType.PURCHASED,
+        order._id.toString(),
+      );
+    }
+
+    // Nối Order -> Subscription (Nếu là mua gói VIP)
+    if (order.type === OrderType.SUBSCRIPTION && order.subscriptionPlanId) {
+      await this.subscriptionsService.activateOrExtendSubscription(
+        order.studentId.toString(),
+        order.subscriptionPlanId.toString(),
         order._id.toString(),
       );
     }
@@ -116,6 +156,7 @@ export class OrdersService {
     return this.orderModel
       .find({ studentId: new Types.ObjectId(studentId) })
       .populate('courseId')
+      .populate('subscriptionPlanId')
       .sort({ createdAt: -1 })
       .exec();
   }

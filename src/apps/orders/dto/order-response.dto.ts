@@ -14,6 +14,9 @@ export class OrderResponseDto {
   @ApiPropertyOptional({ example: '60d5ecb8b5c9c82b88b0e1a2' })
   courseId?: string | null;
 
+  @ApiPropertyOptional({ example: '60d5ecb8b5c9c82b88b0e1a3' })
+  subscriptionPlanId?: string | null;
+
   @ApiProperty({ example: 499000, description: 'Số tiền đơn hàng (VNĐ)' })
   amount: number;
 
@@ -40,6 +43,11 @@ export class OrderResponseDto {
         ? raw.courseId._id
           ? raw.courseId._id.toString()
           : raw.courseId.toString()
+        : null,
+      subscriptionPlanId: raw.subscriptionPlanId
+        ? raw.subscriptionPlanId._id
+          ? raw.subscriptionPlanId._id.toString()
+          : raw.subscriptionPlanId.toString()
         : null,
       amount: raw.amount,
       status: raw.status,
