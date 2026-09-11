@@ -41,7 +41,7 @@ describe('LessonProgressService', () => {
       assignmentPassed: data.assignmentPassed ?? false,
       score: data.score ?? null,
       isCompleted: data.isCompleted ?? false,
-      save: jest.fn().mockImplementation(function () {
+      save: jest.fn().mockImplementation(function (this: any) {
         return Promise.resolve(this);
       }),
     };
