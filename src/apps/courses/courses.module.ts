@@ -1,7 +1,10 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
+import { CategoryAccessGuard } from 'src/common/guards/category-access.guard';
 import { CategoriesModule } from '../categories/categories.module';
 import { InstructorsModule } from '../instructors/instructors.module';
+import { UserCategoryRolesModule } from '../user-category-roles/user-category-roles.module';
+import { UsersModule } from '../users/users.module';
 import { CoursesController } from './courses.controller';
 import { CoursesService } from './courses.service';
 import { COURSE_PUBLISH_VALIDATOR } from './interfaces/course-publish-validator.interface';
@@ -12,10 +15,13 @@ import { Course, CourseSchema } from './schemas/course.schema';
     MongooseModule.forFeature([{ name: Course.name, schema: CourseSchema }]),
     CategoriesModule,
     InstructorsModule,
+    UsersModule,
+    UserCategoryRolesModule,
   ],
   controllers: [CoursesController],
   providers: [
     CoursesService,
+    CategoryAccessGuard,
     {
       provide: COURSE_PUBLISH_VALIDATOR,
       useValue: {
