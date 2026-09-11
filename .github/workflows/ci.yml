@@ -1,0 +1,68 @@
+name: CI
+
+# KHI NÀO CHẠY:
+# - pull_request vào develop: các nhánh chức năng (feat/, chore/, fix/...) phải pass CI đầy đủ mới được merge vào develop
+# - pull_request vào main: chỉ chấp nhận PR từ develop -> main, job guard-main sẽ chặn nếu nhánh nguồn khác develop
+# - push vào develop/main: chạy lại CI trên chính commit thật sau khi merge (Render theo dõi commit trên main để deploy)
+on:
+  push:
+    branches: [develop, main]
+  pull_request:
+    branches: [develop, main]
+
+jobs:
+  guard-main:
+    # Chỉ chạy khi có PR nhắm vào main — chặn nếu nhánh nguồn không phải develop
+    if: github.event_name == 'pull_request' && github.base_ref == 'main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Only allow develop to merge into main
+        run: |
+          if [ "${{ github.head_ref }}" != "develop" ]; then
+            echo "❌ Chỉ nhánh develop được phép PR vào main. Nhánh hiện tại: ${{ github.head_ref }}"
+            exit 1
+          fi
+          echo "✅ PR hợp lệ: develop -> main"
+
+  test:
+    runs-on: ubuntu-latest
+    services:
+      mongo:
+        image: mongo:7
+        env:
+          MONGO_INITDB_ROOT_USERNAME: test
+          MONGO_INITDB_ROOT_PASSWORD: test
+          MONGO_INITDB_DATABASE: online_courses_test
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --eval 'db.adminCommand(\"ping\")'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: mongodb://test:test@localhost:27017/online_courses_test?authSource=admin
+      NODE_ENV: test
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+
+      - name: Unit tests
+        run: npm run test

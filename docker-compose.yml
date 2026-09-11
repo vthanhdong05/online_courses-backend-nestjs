@@ -1,0 +1,53 @@
+# dùng để chạy nhiều container cùng lúc: 1 lệnh → chạy toàn hệ thống
+
+services:
+  mongo:
+    image: mongo:7
+    container_name: mongo_nestjs_online_courses_dev
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${DB_USER}
+      MONGO_INITDB_ROOT_PASSWORD: ${DB_PASSWORD}
+      MONGO_INITDB_DATABASE: ${DB_NAME}
+    ports:
+      - '${DB_PORT}:27017'
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - online_courses_net
+    healthcheck:
+      test: ['CMD', 'mongosh', '--eval', "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: nestjs_online_courses_app_dev
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: mongodb://${DB_USER}:${DB_PASSWORD}@mongo:27017/${DB_NAME}?authSource=admin
+    ports:
+      - '${PORT}:3000'
+    depends_on:
+      mongo:
+        condition: service_healthy
+    networks:
+      - online_courses_net
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -qO- http://localhost:3000/api/health || exit 1']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  mongo_data:
+
+networks:
+  online_courses_net:
+    driver: bridge
