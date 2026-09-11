@@ -15,6 +15,7 @@ import { AuthModule } from './auth/auth.module';
 import { CategoriesModule } from './categories/categories.module';
 import { CoursesModule } from './courses/courses.module';
 import { InstructorsModule } from './instructors/instructors.module';
+import { LessonsModule } from './lessons/lessons.module';
 import { UserCategoryRolesModule } from './user-category-roles/user-category-roles.module';
 import { UsersModule } from './users/users.module';
 
@@ -32,6 +33,7 @@ import { UsersModule } from './users/users.module';
     CategoriesModule,
     InstructorsModule,
     CoursesModule,
+    LessonsModule,
     UserCategoryRolesModule,
     AuthModule,
   ],
