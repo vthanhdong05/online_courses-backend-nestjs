@@ -1,6 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Model, Types } from 'mongoose';
 import { Course } from '../../courses/schemas/course.schema';
+import { SubscriptionPlan } from '../../subscription-plans/schemas/subscription-plan.schema';
 import { User } from '../../users/schemas/user.schema';
 
 export enum OrderType {
@@ -30,6 +31,9 @@ export class Order {
 
   @Prop({ type: Types.ObjectId, ref: Course.name, default: null, index: true })
   courseId?: Types.ObjectId | null;
+
+  @Prop({ type: Types.ObjectId, ref: SubscriptionPlan.name, default: null, index: true })
+  subscriptionPlanId?: Types.ObjectId | null;
 
   @Prop({ type: Number, required: true, min: 0 })
   amount!: number;

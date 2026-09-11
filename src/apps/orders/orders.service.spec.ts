@@ -5,6 +5,8 @@ import { Types } from 'mongoose';
 import { CoursesService } from '../courses/courses.service';
 import { CourseStatus } from '../courses/schemas/course.schema';
 import { EnrollmentsService } from '../enrollments/enrollments.service';
+import { SubscriptionPlansService } from '../subscription-plans/subscription-plans.service';
+import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { OrdersService } from './orders.service';
 import { Order, OrderStatus, OrderType } from './schemas/order.schema';
 
@@ -56,6 +58,14 @@ describe('OrdersService - Course Purchase & Idempotent Payment Confirmation', ()
     createEnrollment: jest.fn(),
   };
 
+  const mockSubscriptionPlansService = {
+    findOne: jest.fn(),
+  };
+
+  const mockSubscriptionsService = {
+    activateOrExtendSubscription: jest.fn(),
+  };
+
   beforeEach(async () => {
     jest.clearAllMocks();
 
@@ -73,6 +83,14 @@ describe('OrdersService - Course Purchase & Idempotent Payment Confirmation', ()
         {
           provide: EnrollmentsService,
           useValue: mockEnrollmentsService,
+        },
+        {
+          provide: SubscriptionPlansService,
+          useValue: mockSubscriptionPlansService,
+        },
+        {
+          provide: SubscriptionsService,
+          useValue: mockSubscriptionsService,
         },
       ],
     }).compile();
