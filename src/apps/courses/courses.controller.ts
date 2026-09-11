@@ -1,7 +1,18 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { CategoryAccessGuard } from 'src/common/guards/category-access.guard';
 import { ParseObjectIdPipe } from 'src/common/pipes/parse-object-id.pipe';
-import { SkipAuth } from '../auth/auth.decorator';
+import { Permissions, SkipAuth } from '../auth/auth.decorator';
 import { CoursesService } from './courses.service';
 import { CourseResponseDto, PaginatedCoursesResponseDto } from './dto/course-response.dto';
 import { ChangeCourseStatusDto } from './dto/change-course-status.dto';
@@ -14,7 +25,8 @@ import { UpdateCourseDto } from './dto/update-course.dto';
 export class CoursesController {
   constructor(private readonly coursesService: CoursesService) {}
 
-  @SkipAuth()
+  @UseGuards(CategoryAccessGuard)
+  @Permissions('course:create')
   @Post()
   @ApiOperation({ summary: 'Tạo Khóa học mới (mặc định trạng thái draft)' })
   async create(@Body() dto: CreateCourseDto): Promise<CourseResponseDto> {
@@ -44,7 +56,8 @@ export class CoursesController {
     return CourseResponseDto.fromDocument(course);
   }
 
-  @SkipAuth()
+  @UseGuards(CategoryAccessGuard)
+  @Permissions('course:update')
   @Patch(':id')
   @ApiOperation({ summary: 'Cập nhật thông tin Khóa học (không bao gồm trạng thái status)' })
   async update(
@@ -55,7 +68,8 @@ export class CoursesController {
     return CourseResponseDto.fromDocument(course);
   }
 
-  @SkipAuth()
+  @UseGuards(CategoryAccessGuard)
+  @Permissions('course:publish')
   @Patch(':id/status')
   @ApiOperation({
     summary: 'Chuyển trạng thái Khóa học theo State Machine (draft -> ready -> published)',
@@ -68,7 +82,8 @@ export class CoursesController {
     return CourseResponseDto.fromDocument(course);
   }
 
-  @SkipAuth()
+  @UseGuards(CategoryAccessGuard)
+  @Permissions('course:delete')
   @Delete(':id')
   @ApiOperation({ summary: 'Xóa mềm Khóa học' })
   async remove(@Param('id', ParseObjectIdPipe) id: string): Promise<CourseResponseDto> {

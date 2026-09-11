@@ -56,8 +56,17 @@ export class CategoryAccessGuard implements CanActivate {
       categoryId,
     );
 
-    const hasPermission = requiredPermissions.every((permission) =>
-      userPermissions.includes(permission),
+    const hasPermission = requiredPermissions.every((required) =>
+      userPermissions.some((userPerm) => {
+        if (userPerm === '*' || userPerm === '*:*') return true;
+        if (
+          (userPerm === 'course:manage' || userPerm === 'course:*') &&
+          required.startsWith('course:')
+        ) {
+          return true;
+        }
+        return userPerm === required;
+      }),
     );
 
     if (!hasPermission) {

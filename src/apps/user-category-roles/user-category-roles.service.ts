@@ -1,6 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Types } from 'mongoose';
+import { CategoriesService } from '../categories/categories.service';
+import { UsersService } from '../users/users.service';
+import { AssignUserCategoryRoleDto } from './dto/assign-user-category-role.dto';
 import type { UserCategoryRoleModel } from './schemas/user-category-role.schema';
 import {
   UserCategoryRole,
@@ -13,6 +16,8 @@ export class UserCategoryRolesService {
   constructor(
     @InjectModel(UserCategoryRole.name)
     private readonly userCategoryRoleModel: UserCategoryRoleModel,
+    private readonly usersService: UsersService,
+    private readonly categoriesService: CategoriesService,
   ) {}
 
   async getUserCategoryPermissions(userId: string, categoryId?: string): Promise<string[]> {
@@ -39,11 +44,11 @@ export class UserCategoryRolesService {
     return Array.from(permissionsSet);
   }
 
-  async assignCategoryRole(
-    userId: string,
-    categoryId: string,
-    permissions: string[],
-  ): Promise<UserCategoryRoleDocument> {
+  async assignCategoryRole(dto: AssignUserCategoryRoleDto): Promise<UserCategoryRoleDocument> {
+    const { userId, categoryId, permissions } = dto;
+    await this.usersService.findOne(userId);
+    await this.categoriesService.assertExists(categoryId);
+
     return this.userCategoryRoleModel.findOneAndUpdate(
       {
         userId: new Types.ObjectId(userId),
@@ -57,5 +62,29 @@ export class UserCategoryRolesService {
       },
       { upsert: true, new: true },
     );
+  }
+
+  async findByUserId(userId: string): Promise<UserCategoryRoleDocument[]> {
+    if (!Types.ObjectId.isValid(userId)) {
+      throw new NotFoundException(`Invalid User ID: ${userId}`);
+    }
+    return this.userCategoryRoleModel
+      .find({
+        userId: new Types.ObjectId(userId),
+        status: UserCategoryRoleStatus.ACTIVE,
+      })
+      .populate('categoryId')
+      .exec();
+  }
+
+  async remove(id: string): Promise<UserCategoryRoleDocument> {
+    if (!Types.ObjectId.isValid(id)) {
+      throw new NotFoundException(`Invalid ID: ${id}`);
+    }
+    const role = await this.userCategoryRoleModel.softDeleteById(id);
+    if (!role) {
+      throw new NotFoundException(`User category role with id ${id} not found`);
+    }
+    return role;
   }
 }
