@@ -1,106 +1,175 @@
-<<<<<<< HEAD
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# 🎓 Online Courses Platform Backend (NestJS + MongoDB)
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+> A production-grade, enterprise-ready RESTful API backend for an online learning platform. Features VIP Subscriptions, Automated Progress Tracking, Auto-Graded Assignments, and Course Reviews. Built with **NestJS**, **MongoDB (Mongoose ODM)**, and **TypeScript**.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+---
 
-## Description
+## 🚀 Key Features
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+### 1. 🔐 Authentication & Access Control (Auth & RBAC)
+- **Sign Up / Sign In**: Secure password hashing with `bcrypt`, issuing pairs of **JWT Access Tokens** and **Refresh Tokens**.
+- **Role-Based Access Control (RBAC)**: 4 main roles (`student`, `instructor`, `staff`, `admin`).
+- **Global Auth Guard**: All endpoints are protected by default. Public routes use `@Public()` custom decorator; role-restricted endpoints use `@Roles(...)`.
 
-## Project setup
+### 2. 📚 Category, Course & Lesson Management
+- **Course CRUD**: Supports pricing, VIP inclusion flag (`includedInVip`), pagination, filtering, and search.
+- **Publishing Rules**: A course can only be published (`status = 'published'`) if it contains at least 1 valid lesson (`LessonCoursePublishValidator`).
+- **Lessons & Assignments**: Video lesson support, interactive Multiple Choice (MCQ) & Fill-in-the-blank assignments with **automatic grading**.
+- **Soft Delete**: Built-in soft deletion and restoration for data safety across models.
 
-```bash
-$ npm install
+### 3. 💳 Single Course Purchases & Orders
+- **Order Creation**: Direct individual course checkout.
+- **Automated Enrollment**: Upon successful order payment (`status = 'paid'`), the system automatically creates an `Enrollment` record with `accessType = 'purchased'`.
+
+### 4. 👑 VIP Subscriptions & Computed Permissions
+- **Subscription Plans**: Flexible tier management (1 month, 6 months, 1 year, etc.).
+- **Computed Permission Check**: Avoids bulky materialized enrollment creation for VIP purchases. Access rights are evaluated dynamically in real time via `AccessService`:
+  $$\text{CanAccess} = \text{IsEnrolledPurchased} \lor (\text{Course.includedInVip} \land \text{HasActiveVipSubscription})$$
+
+### 5. 📈 Lesson Progress Tracking & Automated Course Completion
+- **Progress Tracking**: Monitors video watching (`videoCompleted`) and assignment pass results (`assignmentPassed`).
+- **Lesson Completion Rule**: A lesson marked `isCompleted = true` if video completed $\land$ (No assignment $\lor$ Assignment passed).
+- **Course Progress Formula**:
+  $$\text{CourseProgress \%} = \text{Math.round}\left(\frac{\text{CompletedLessons}}{\text{TotalLessons}} \times 100\right)$$
+- **Automated Enrollment Completion**: When course progress reaches `100%`, `EnrollmentsService.markCourseCompleted` automatically updates `Enrollment.status = 'completed'` and sets `completedAt`.
+
+### 6. ⭐ Course Reviews & Feedback System
+- **Access-Restricted Reviews**: Reviews are strictly restricted to students who currently possess course access (`AccessService.canAccessCourse === true`).
+- **Unique Review Constraint**: Compound unique index `{ studentId: 1, courseId: 1 }` guarantees 1 review per student per course (submitting again updates existing review).
+- **Staff Replies**: Allows Admin, Staff, or Instructors to reply to student feedback (`replyComment`, `repliedBy`, `repliedAt`).
+- **Aggregate Rating Summary**: Calculates `averageRating` (rounded to 1 decimal place) and `totalReviews` dynamically.
+
+---
+
+## 🎯 Architecture Highlights & Key Design Decisions
+
+1. **Materialized vs. Computed Permissions Trade-off**:
+   - Chosen **Computed Permissions** for VIP subscriptions to prevent data sync issues when courses are added/removed from VIP tiers or when subscriptions expire. Shifts heavy write syncs to lightweight read checks (Write Heavy $\to$ Read Light).
+2. **Automated Progress & Enrollment Lifecycle**:
+   - VIP students do not generate materialized enrollment records initially. However, upon reaching 100% completion, an enrollment record (`accessType = 'vip'`, `status = 'completed'`) is automatically created/updated to preserve their certificate and completion history permanently.
+3. **Resolving Module Circular Dependencies**:
+   - Handled circular dependency chains between `LessonsModule`, `CoursesModule`, `LessonProgressModule`, and `AccessModule` using NestJS `forwardRef()` and `@Inject(forwardRef(...))`.
+
+---
+
+## 🛠️ Technology Stack
+
+| Component | Technology |
+|---|---|
+| **Framework** | NestJS (TypeScript) |
+| **Database** | MongoDB (Mongoose ODM) |
+| **Authentication** | Passport.js, JWT (Access & Refresh Tokens), Bcrypt |
+| **Validation** | class-validator, class-transformer |
+| **API Documentation** | Swagger UI (`@nestjs/swagger`) |
+| **Testing** | Jest, `@nestjs/testing` |
+| **Code Formatting** | ESLint, Prettier |
+
+---
+
+## 📁 Directory Structure
+
+```text
+src/
+├── apps/
+│   ├── access/               # Dynamic course access computation service
+│   ├── auth/                 # JWT Authentication, Refresh Tokens, Guards, Decorators
+│   ├── categories/           # Course category management
+│   ├── courses/              # Course CRUD & publishing validation rules
+│   ├── enrollments/          # Course ownership & completion state management
+│   ├── instructors/          # Instructor profile management
+│   ├── lesson-progress/      # Video tracking, assignment progress & completion %
+│   ├── lessons/              # Lesson management & automated assignment grading
+│   ├── orders/               # Single course purchases & order workflows
+│   ├── reviews/              # Student reviews, aggregate ratings & staff replies
+│   ├── subscription-plans/   # VIP tier plan configuration
+│   ├── subscriptions/        # Active VIP subscription tracking
+│   ├── user-category-roles/  # Category-level RBAC role assignment
+│   └── users/                # User management, pagination, import/export
+├── common/
+│   ├── catch-everything/     # Global exception filter for unified error responses
+│   ├── database/             # Mongoose plugins (Soft Delete, Auto Populate)
+│   ├── guards/               # Category Access Guard, Roles Guard
+│   ├── interceptors/         # Format Response Interceptor, Logging Interceptor
+│   ├── logger/               # Custom Logger Service
+│   └── pipes/                # Parse ObjectId Pipe
+├── app.module.ts             # Application Root Module
+└── main.ts                   # Application Entrypoint & Bootstrap
 ```
 
-## Compile and run the project
+---
 
+## ⚙️ Getting Started
+
+### 1. Prerequisites
+- **Node.js**: `>= 18.x`
+- **MongoDB**: Local MongoDB instance or MongoDB Atlas cluster
+
+### 2. Installation
 ```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+npm install
 ```
 
-## Run tests
-
-```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+### 3. Environment Configuration (`.env`)
+Create a `.env` file in the project root:
+```env
+PORT=9999
+MONGO_URI=mongodb://localhost:27017/nestjs-online-courses
+JWT_SECRET=your_super_secret_access_key
+JWT_REFRESH_SECRET=your_super_secret_refresh_key
+JWT_EXPIRES_IN=15m
+JWT_REFRESH_EXPIRES_IN=7d
 ```
 
-## Deployment
-
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
-
+### 4. Running the Application
 ```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+# Development Mode (Watch Mode)
+npm run start:dev
+
+# Production Build & Launch
+npm run build
+npm run start:prod
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+Once started:
+- **REST API Base URL**: `http://localhost:9999/api`
+- **Swagger Documentation**: `http://localhost:9999/api-docs`
 
-## Resources
+---
 
-Check out a few resources that may come in handy when working with NestJS:
+## 🧪 Testing & Code Quality
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+```bash
+# Run Unit Test Suites (13 Test Suites / 64 Tests)
+npm test
 
-## Support
+# Linter Check & Auto Fix
+npm run lint
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+# Production Build Check
+npm run build
+```
 
-## Stay in touch
+---
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+## 📖 Core API Endpoints Reference
 
-## License
+| Method | Endpoint | Description | Role Required |
+|---|---|---|---|
+| `POST` | `/api/auth/sign-up` | Register a new user account | Public |
+| `POST` | `/api/auth/sign-in` | Authenticate & obtain Token Pair | Public |
+| `GET` | `/api/courses` | List published courses (Paginated, Search) | Public |
+| `POST` | `/api/courses` | Create a new course | Admin / Instructor |
+| `POST` | `/api/courses/:id/lessons` | Add a lesson to a course | Admin / Instructor |
+| `POST` | `/api/courses/:id/lessons/:lessonId/assignment/submit` | Submit assignment & receive instant score | Student |
+| `POST` | `/api/orders` | Purchase an individual course | Student |
+| `GET` | `/api/subscription-plans` | List available VIP subscription plans | Public |
+| `GET` | `/api/access/check/:courseId` | Verify real-time course access permission | Logged-in User |
+| `POST` | `/api/courses/:id/lessons/:lessonId/progress/video` | Mark lesson video as completed | Student |
+| `GET` | `/api/courses/:id/progress` | Get course progress summary (%) | Student |
+| `POST` | `/api/courses/:id/reviews` | Write or update course review | Student (With Access) |
+| `PATCH` | `/api/courses/:id/reviews/:reviewId/reply` | Reply to student review | Admin / Staff / Instructor |
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
-=======
+---
 
-# online_courses-backend-nestjs
-
-online-courses-backend-nestjs
-
-> > > > > > > 98eb415cae52e3f0efcfc73659549992751b117c
+## 📄 License
+This project is licensed under the [MIT License](LICENSE).
