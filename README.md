@@ -1,60 +1,60 @@
 # 🎓 Online Courses Platform Backend (NestJS + MongoDB)
 
-> Hệ thống Backend RESTful API hoàn chỉnh cho nền tảng khóa học trực tuyến tích hợp Đăng ký gói VIP, Theo dõi tiến độ học tập tự động và Đánh giá/Phản hồi bài học. Được xây dựng trên nền tảng **NestJS**, **MongoDB (Mongoose)** và **TypeScript**.
+> A production-grade, enterprise-ready RESTful API backend for an online learning platform. Features VIP Subscriptions, Automated Progress Tracking, Auto-Graded Assignments, and Course Reviews. Built with **NestJS**, **MongoDB (Mongoose ODM)**, and **TypeScript**.
 
 ---
 
-## 🚀 Tính năng chính (Key Features)
+## 🚀 Key Features
 
-### 1. 🔐 Xác thực & Phân quyền (Auth & RBAC)
-- **Đăng ký / Đăng nhập**: Mã hóa mật khẩu với `bcrypt`, cấp cặp Token **Access Token (JWT)** & **Refresh Token**.
-- **Phân quyền người dùng**: 4 vai trò chính (`student`, `instructor`, `staff`, `admin`).
-- **Global Auth Guard**: Tự động bảo vệ tất cả endpoint, sử dụng Custom Decorator `@Public()` cho các API công khai và `@Roles(...)` cho phân quyền vai trò.
+### 1. 🔐 Authentication & Access Control (Auth & RBAC)
+- **Sign Up / Sign In**: Secure password hashing with `bcrypt`, issuing pairs of **JWT Access Tokens** and **Refresh Tokens**.
+- **Role-Based Access Control (RBAC)**: 4 main roles (`student`, `instructor`, `staff`, `admin`).
+- **Global Auth Guard**: All endpoints are protected by default. Public routes use `@Public()` custom decorator; role-restricted endpoints use `@Roles(...)`.
 
-### 2. 📚 Quản lý Danh mục, Khóa học & Bài học (Courses & Lessons)
-- **CRUD Khóa học**: Thuộc tính giá (`price`), cờ tham gia gói VIP (`includedInVip`), phân trang & tìm kiếm.
-- **Quy tắc Xuất bản (Publishing Rules)**: Khóa học chỉ được chuyển trạng thái `published` khi có ít nhất 1 bài học hợp lệ (`LessonCoursePublishValidator`).
-- **Quản lý Bài học & Bài tập**: Tích hợp video bài học, bài tập trắc nghiệm (MCQ) & điền từ (Fill Blank) với tính năng **chấm điểm tự động**.
-- **Soft Delete**: Hỗ trợ xóa mềm và khôi phục dữ liệu an toàn.
+### 2. 📚 Category, Course & Lesson Management
+- **Course CRUD**: Supports pricing, VIP inclusion flag (`includedInVip`), pagination, filtering, and search.
+- **Publishing Rules**: A course can only be published (`status = 'published'`) if it contains at least 1 valid lesson (`LessonCoursePublishValidator`).
+- **Lessons & Assignments**: Video lesson support, interactive Multiple Choice (MCQ) & Fill-in-the-blank assignments with **automatic grading**.
+- **Soft Delete**: Built-in soft deletion and restoration for data safety across models.
 
-### 3. 💳 Hệ thống Đơn hàng Mua lẻ (Single Course Orders)
-- **Tạo đơn hàng**: Mua lẻ khóa học trực tiếp.
-- **Tự động cấp quyền (Enrollment)**: Khi đơn hàng thanh toán thành công (`status = 'paid'`), hệ thống tự động tạo bản ghi `Enrollment` với `accessType = 'purchased'`.
+### 3. 💳 Single Course Purchases & Orders
+- **Order Creation**: Direct individual course checkout.
+- **Automated Enrollment**: Upon successful order payment (`status = 'paid'`), the system automatically creates an `Enrollment` record with `accessType = 'purchased'`.
 
-### 4. 👑 Gói Đăng ký VIP (Subscriptions & Computed Permissions)
-- **Quản lý Gói VIP (Subscription Plans)**: Tạo gói theo thời hạn (1 tháng, 6 tháng, 1 năm,...).
-- **Computed Permission Check (Tính toán quyền động)**: Không tạo hàng loạt `Enrollment` khi mua VIP để tránh phình dữ liệu. Quyền xem được tính toán thời gian thực thông qua `AccessService`:
+### 4. 👑 VIP Subscriptions & Computed Permissions
+- **Subscription Plans**: Flexible tier management (1 month, 6 months, 1 year, etc.).
+- **Computed Permission Check**: Avoids bulky materialized enrollment creation for VIP purchases. Access rights are evaluated dynamically in real time via `AccessService`:
   $$\text{CanAccess} = \text{IsEnrolledPurchased} \lor (\text{Course.includedInVip} \land \text{HasActiveVipSubscription})$$
 
-### 5. 📈 Theo dõi Tiến độ Học tập & Tự động Hoàn thành Khóa học (Lesson Progress)
-- **Ghi nhận tiến độ**: Theo dõi trạng thái xem video (`videoCompleted`) và kết quả bài tập (`assignmentPassed`).
-- **Quy tắc Bài học hoàn thành**: Bài học đạt `isCompleted = true` khi đã xem xong video $\land$ (Không có bài tập $\lor$ Đã pass bài tập).
-- **Công thức Tiến độ**:
+### 5. 📈 Lesson Progress Tracking & Automated Course Completion
+- **Progress Tracking**: Monitors video watching (`videoCompleted`) and assignment pass results (`assignmentPassed`).
+- **Lesson Completion Rule**: A lesson marked `isCompleted = true` if video completed $\land$ (No assignment $\lor$ Assignment passed).
+- **Course Progress Formula**:
   $$\text{CourseProgress \%} = \text{Math.round}\left(\frac{\text{CompletedLessons}}{\text{TotalLessons}} \times 100\right)$$
-- **Tự động chuyển trạng thái Enrollment**: Khi tiến độ đạt `100%`, hệ thống tự động cập nhật bản ghi `Enrollment.status = 'completed'` và ghi nhận `completedAt`.
+- **Automated Enrollment Completion**: When course progress reaches `100%`, `EnrollmentsService.markCourseCompleted` automatically updates `Enrollment.status = 'completed'` and sets `completedAt`.
 
-### 6. ⭐ Đánh giá & Phản hồi (Reviews & Feedback)
-- **Ràng buộc Quyền đánh giá**: Chỉ Học viên **đã sở hữu hoặc có VIP active** mới được viết/cập nhật đánh giá (`AccessService.canAccessCourse === true`).
-- **Đánh giá duy nhất**: Compound unique index `{ studentId: 1, courseId: 1 }` đảm bảo mỗi học viên chỉ có 1 bài đánh giá per course (hỗ trợ cập nhật lại).
-- **Phản hồi từ Staff**: Cho phép Admin/Staff/Instructor phản hồi bài đánh giá (`replyComment`, `repliedBy`, `repliedAt`).
-- **Thống kê Điểm sao**: Tự động tổng hợp `averageRating` (làm tròn 1 chữ số thập phân) và `totalReviews`.
-
----
-
-## 🎯 Điểm nhấn Kiến trúc (Architecture Highlights for Interview)
-
-1. **Trade-off giữa Materialized Permission & Computed Permission**:
-   - Chọn **Computed Permission** cho gói VIP để giải quyết bài toán đồng bộ dữ liệu khi danh sách VIP course thay đổi hoặc khi gói VIP hết hạn. Giảm thiểu chi phí ghi (Write Heavy -> Read Light).
-2. **Thiết kế Vòng đời Enrollment & Tiến độ tự động**:
-   - Học viên học qua VIP không tạo Enrollment ban đầu. Nhưng khi hoàn thành 100% khóa học, hệ thống tự động tạo/cập nhật bản ghi Enrollment (`accessType = 'vip'`, `status = 'completed'`) để bảo lưu chứng chỉ vĩnh viễn.
-3. **Giải quyết Phụ thuộc Vòng (Circular Dependency)**:
-   - Áp dụng triệt để `forwardRef()` và `@Inject(forwardRef(...))` giữa các module `LessonsModule`, `CoursesModule`, `LessonProgressModule` và `AccessModule`.
+### 6. ⭐ Course Reviews & Feedback System
+- **Access-Restricted Reviews**: Reviews are strictly restricted to students who currently possess course access (`AccessService.canAccessCourse === true`).
+- **Unique Review Constraint**: Compound unique index `{ studentId: 1, courseId: 1 }` guarantees 1 review per student per course (submitting again updates existing review).
+- **Staff Replies**: Allows Admin, Staff, or Instructors to reply to student feedback (`replyComment`, `repliedBy`, `repliedAt`).
+- **Aggregate Rating Summary**: Calculates `averageRating` (rounded to 1 decimal place) and `totalReviews` dynamically.
 
 ---
 
-## 🛠️ Công nghệ sử dụng (Tech Stack)
+## 🎯 Architecture Highlights & Key Design Decisions
 
-| Thành phần | Công nghệ |
+1. **Materialized vs. Computed Permissions Trade-off**:
+   - Chosen **Computed Permissions** for VIP subscriptions to prevent data sync issues when courses are added/removed from VIP tiers or when subscriptions expire. Shifts heavy write syncs to lightweight read checks (Write Heavy $\to$ Read Light).
+2. **Automated Progress & Enrollment Lifecycle**:
+   - VIP students do not generate materialized enrollment records initially. However, upon reaching 100% completion, an enrollment record (`accessType = 'vip'`, `status = 'completed'`) is automatically created/updated to preserve their certificate and completion history permanently.
+3. **Resolving Module Circular Dependencies**:
+   - Handled circular dependency chains between `LessonsModule`, `CoursesModule`, `LessonProgressModule`, and `AccessModule` using NestJS `forwardRef()` and `@Inject(forwardRef(...))`.
+
+---
+
+## 🛠️ Technology Stack
+
+| Component | Technology |
 |---|---|
 | **Framework** | NestJS (TypeScript) |
 | **Database** | MongoDB (Mongoose ODM) |
@@ -62,55 +62,55 @@
 | **Validation** | class-validator, class-transformer |
 | **API Documentation** | Swagger UI (`@nestjs/swagger`) |
 | **Testing** | Jest, `@nestjs/testing` |
-| **Code Quality** | ESLint, Prettier |
+| **Code Formatting** | ESLint, Prettier |
 
 ---
 
-## 📁 Cấu trúc Thư mục (Project Structure)
+## 📁 Directory Structure
 
 ```text
 src/
 ├── apps/
-│   ├── access/               # Quản lý tính toán quyền truy cập khóa học động
-│   ├── auth/                 # Xác thực JWT, Refresh Token, Guards, Decorators
-│   ├── categories/           # Quản lý danh mục khóa học
-│   ├── courses/              # Quản lý khóa học, quy tắc publish
-│   ├── enrollments/          # Quản lý sở hữu khóa học & trạng thái hoàn thành
-│   ├── instructors/          # Quản lý thông tin giảng viên
-│   ├── lesson-progress/      # Theo dõi tiến độ xem video, làm bài tập & % hoàn thành
-│   ├── lessons/              # Bài học, bài tập trắc nghiệm & tự động chấm điểm
-│   ├── orders/               # Đơn hàng mua lẻ khóa học
-│   ├── reviews/              # Đánh giá, số sao trung bình & phản hồi từ Staff
-│   ├── subscription-plans/   # Quản lý gói VIP Subscription
-│   ├── subscriptions/        # Đăng ký gói VIP & lịch sử gia hạn
-│   ├── user-category-roles/  # Phân quyền vai trò theo danh mục
-│   └── users/                # Quản lý người dùng, phân trang, export/import
+│   ├── access/               # Dynamic course access computation service
+│   ├── auth/                 # JWT Authentication, Refresh Tokens, Guards, Decorators
+│   ├── categories/           # Course category management
+│   ├── courses/              # Course CRUD & publishing validation rules
+│   ├── enrollments/          # Course ownership & completion state management
+│   ├── instructors/          # Instructor profile management
+│   ├── lesson-progress/      # Video tracking, assignment progress & completion %
+│   ├── lessons/              # Lesson management & automated assignment grading
+│   ├── orders/               # Single course purchases & order workflows
+│   ├── reviews/              # Student reviews, aggregate ratings & staff replies
+│   ├── subscription-plans/   # VIP tier plan configuration
+│   ├── subscriptions/        # Active VIP subscription tracking
+│   ├── user-category-roles/  # Category-level RBAC role assignment
+│   └── users/                # User management, pagination, import/export
 ├── common/
-│   ├── catch-everything/     # Global Exception Filter chuẩn hóa lỗi
-│   ├── database/             # Plugins Mongoose (Soft Delete, Auto Populate)
+│   ├── catch-everything/     # Global exception filter for unified error responses
+│   ├── database/             # Mongoose plugins (Soft Delete, Auto Populate)
 │   ├── guards/               # Category Access Guard, Roles Guard
 │   ├── interceptors/         # Format Response Interceptor, Logging Interceptor
 │   ├── logger/               # Custom Logger Service
 │   └── pipes/                # Parse ObjectId Pipe
-├── app.module.ts             # Module gốc hệ thống
-└── main.ts                   # Entrypoint Bootstrap NestJS App
+├── app.module.ts             # Application Root Module
+└── main.ts                   # Application Entrypoint & Bootstrap
 ```
 
 ---
 
-## ⚙️ Hướng dẫn Cài đặt & Khởi chạy (Installation & Setup)
+## ⚙️ Getting Started
 
-### 1. Yêu cầu hệ thống
+### 1. Prerequisites
 - **Node.js**: `>= 18.x`
-- **MongoDB**: Standalone / Replica Set local hoặc MongoDB Atlas
+- **MongoDB**: Local MongoDB instance or MongoDB Atlas cluster
 
-### 2. Cài đặt Dependencies
+### 2. Installation
 ```bash
 npm install
 ```
 
-### 3. Cấu hình Biến môi trường (`.env`)
-Tạo file `.env` tại thư mục gốc với các thông số:
+### 3. Environment Configuration (`.env`)
+Create a `.env` file in the project root:
 ```env
 PORT=9999
 MONGO_URI=mongodb://localhost:27017/nestjs-online-courses
@@ -120,26 +120,26 @@ JWT_EXPIRES_IN=15m
 JWT_REFRESH_EXPIRES_IN=7d
 ```
 
-### 4. Khởi chạy Ứng dụng
+### 4. Running the Application
 ```bash
-# Chế độ Development (Watch mode)
+# Development Mode (Watch Mode)
 npm run start:dev
 
-# Chế độ Production Build
+# Production Build & Launch
 npm run build
 npm run start:prod
 ```
 
-Sau khi khởi chạy thành công:
-- **REST API Endpoint**: `http://localhost:9999/api`
-- **Swagger API Documentation**: `http://localhost:9999/api-docs`
+Once started:
+- **REST API Base URL**: `http://localhost:9999/api`
+- **Swagger Documentation**: `http://localhost:9999/api-docs`
 
 ---
 
-## 🧪 Kiểm thử (Testing & Quality)
+## 🧪 Testing & Code Quality
 
 ```bash
-# Chạy toàn bộ Unit Tests (13 Test Suites / 64 Tests)
+# Run Unit Test Suites (13 Test Suites / 64 Tests)
 npm test
 
 # Linter Check & Auto Fix
@@ -151,25 +151,25 @@ npm run build
 
 ---
 
-## 📖 Bảng tra cứu API chính (Core API Endpoints Reference)
+## 📖 Core API Endpoints Reference
 
-| Phương thức | Đường dẫn API | Mô tả | Vai trò |
+| Method | Endpoint | Description | Role Required |
 |---|---|---|---|
-| `POST` | `/api/auth/sign-up` | Đăng ký tài khoản | Public |
-| `POST` | `/api/auth/sign-in` | Đăng nhập & Lấy cặp Token | Public |
-| `GET` | `/api/courses` | Lấy danh sách khóa học (Phân trang, lọc) | Public |
-| `POST` | `/api/courses` | Tạo khóa học mới | Admin / Instructor |
-| `POST` | `/api/courses/:id/lessons` | Tạo bài học mới | Admin / Instructor |
-| `POST` | `/api/courses/:id/lessons/:lessonId/assignment/submit` | Nộp bài tập & chấm điểm tự động | Student |
-| `POST` | `/api/orders` | Mua lẻ khóa học | Student |
-| `GET` | `/api/subscription-plans` | Lấy danh sách gói VIP | Public |
-| `GET` | `/api/access/check/:courseId` | Kiểm tra quyền truy cập khóa học | Logged-in User |
-| `POST` | `/api/courses/:id/lessons/:lessonId/progress/video` | Đánh dấu xem xong video bài học | Student |
-| `GET` | `/api/courses/:id/progress` | Xem tổng quan % tiến độ học | Student |
-| `POST` | `/api/courses/:id/reviews` | Viết / cập nhật đánh giá khóa học | Student (Have Access) |
-| `PATCH` | `/api/courses/:id/reviews/:reviewId/reply` | Phản hồi bài đánh giá | Admin / Staff / Instructor |
+| `POST` | `/api/auth/sign-up` | Register a new user account | Public |
+| `POST` | `/api/auth/sign-in` | Authenticate & obtain Token Pair | Public |
+| `GET` | `/api/courses` | List published courses (Paginated, Search) | Public |
+| `POST` | `/api/courses` | Create a new course | Admin / Instructor |
+| `POST` | `/api/courses/:id/lessons` | Add a lesson to a course | Admin / Instructor |
+| `POST` | `/api/courses/:id/lessons/:lessonId/assignment/submit` | Submit assignment & receive instant score | Student |
+| `POST` | `/api/orders` | Purchase an individual course | Student |
+| `GET` | `/api/subscription-plans` | List available VIP subscription plans | Public |
+| `GET` | `/api/access/check/:courseId` | Verify real-time course access permission | Logged-in User |
+| `POST` | `/api/courses/:id/lessons/:lessonId/progress/video` | Mark lesson video as completed | Student |
+| `GET` | `/api/courses/:id/progress` | Get course progress summary (%) | Student |
+| `POST` | `/api/courses/:id/reviews` | Write or update course review | Student (With Access) |
+| `PATCH` | `/api/courses/:id/reviews/:reviewId/reply` | Reply to student review | Admin / Staff / Instructor |
 
 ---
 
 ## 📄 License
-Project này được phát triển dưới giấy phép [MIT](LICENSE).
+This project is licensed under the [MIT License](LICENSE).
