@@ -1,8 +1,10 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { CategoryAccessGuard } from 'src/common/guards/category-access.guard';
 import { CategoriesModule } from '../categories/categories.module';
 import { InstructorsModule } from '../instructors/instructors.module';
+import { LessonsModule } from '../lessons/lessons.module';
+import { LessonCoursePublishValidator } from '../lessons/validators/lesson-course-publish.validator';
 import { UserCategoryRolesModule } from '../user-category-roles/user-category-roles.module';
 import { UsersModule } from '../users/users.module';
 import { CoursesController } from './courses.controller';
@@ -17,6 +19,7 @@ import { Course, CourseSchema } from './schemas/course.schema';
     InstructorsModule,
     UsersModule,
     UserCategoryRolesModule,
+    forwardRef(() => LessonsModule),
   ],
   controllers: [CoursesController],
   providers: [
@@ -24,12 +27,7 @@ import { Course, CourseSchema } from './schemas/course.schema';
     CategoryAccessGuard,
     {
       provide: COURSE_PUBLISH_VALIDATOR,
-      useValue: {
-        validate: async (_courseId: string) => {
-          // Default no-op publish validator for Phase 2.
-          // Will be overridden by LessonsModule in Phase 3.
-        },
-      },
+      useClass: LessonCoursePublishValidator,
     },
   ],
   exports: [CoursesService, MongooseModule, COURSE_PUBLISH_VALIDATOR],

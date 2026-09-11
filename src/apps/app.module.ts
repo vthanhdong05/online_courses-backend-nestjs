@@ -14,7 +14,10 @@ import { AuthGuard } from './auth/auth.guard';
 import { AuthModule } from './auth/auth.module';
 import { CategoriesModule } from './categories/categories.module';
 import { CoursesModule } from './courses/courses.module';
+import { EnrollmentsModule } from './enrollments/enrollments.module';
 import { InstructorsModule } from './instructors/instructors.module';
+import { LessonsModule } from './lessons/lessons.module';
+import { OrdersModule } from './orders/orders.module';
 import { UserCategoryRolesModule } from './user-category-roles/user-category-roles.module';
 import { UsersModule } from './users/users.module';
 
@@ -32,6 +35,9 @@ import { UsersModule } from './users/users.module';
     CategoriesModule,
     InstructorsModule,
     CoursesModule,
+    LessonsModule,
+    EnrollmentsModule,
+    OrdersModule,
     UserCategoryRolesModule,
     AuthModule,
   ],
