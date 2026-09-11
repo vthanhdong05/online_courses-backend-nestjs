@@ -8,6 +8,11 @@ export enum AccessType {
   VIP = 'vip',
 }
 
+export enum EnrollmentStatus {
+  ACTIVE = 'active',
+  COMPLETED = 'completed',
+}
+
 export type EnrollmentDocument = Enrollment & Document;
 
 @Schema({
@@ -26,6 +31,12 @@ export class Enrollment {
 
   @Prop({ type: Types.ObjectId, ref: 'Order', default: null })
   orderId?: Types.ObjectId | null;
+
+  @Prop({ type: String, enum: EnrollmentStatus, default: EnrollmentStatus.ACTIVE, index: true })
+  status!: EnrollmentStatus;
+
+  @Prop({ type: Date, default: null })
+  completedAt?: Date | null;
 
   @Prop({ type: Date, default: Date.now })
   enrolledAt!: Date;

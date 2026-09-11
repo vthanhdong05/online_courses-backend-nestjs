@@ -17,6 +17,12 @@ export class EnrollmentResponseDto {
   @ApiPropertyOptional({ example: '60d5ecb8b5c9c82b88b0e1a3' })
   orderId?: string | null;
 
+  @ApiProperty({ example: 'active' })
+  status: string;
+
+  @ApiPropertyOptional({ example: null })
+  completedAt?: Date | null;
+
   @ApiProperty()
   enrolledAt: Date;
 
@@ -43,6 +49,8 @@ export class EnrollmentResponseDto {
           ? raw.orderId._id.toString()
           : raw.orderId.toString()
         : null,
+      status: raw.status || 'active',
+      completedAt: raw.completedAt || null,
       enrolledAt: raw.enrolledAt,
       createdAt: raw.createdAt,
     };

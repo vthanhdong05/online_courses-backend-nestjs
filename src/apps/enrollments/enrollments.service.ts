@@ -2,7 +2,12 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Types } from 'mongoose';
 import type { EnrollmentModel } from './schemas/enrollment.schema';
-import { AccessType, Enrollment, EnrollmentDocument } from './schemas/enrollment.schema';
+import {
+  AccessType,
+  Enrollment,
+  EnrollmentDocument,
+  EnrollmentStatus,
+} from './schemas/enrollment.schema';
 
 @Injectable()
 export class EnrollmentsService {
@@ -45,6 +50,37 @@ export class EnrollmentsService {
       }
       throw err;
     }
+  }
+
+  async markCourseCompleted(
+    studentId: string,
+    courseId: string,
+  ): Promise<EnrollmentDocument | null> {
+    if (!Types.ObjectId.isValid(studentId) || !Types.ObjectId.isValid(courseId)) {
+      return null;
+    }
+
+    let enrollment = await this.enrollmentModel.findOne({
+      studentId: new Types.ObjectId(studentId),
+      courseId: new Types.ObjectId(courseId),
+    });
+
+    if (!enrollment) {
+      enrollment = new this.enrollmentModel({
+        studentId: new Types.ObjectId(studentId),
+        courseId: new Types.ObjectId(courseId),
+        accessType: AccessType.VIP,
+        enrolledAt: new Date(),
+      });
+    }
+
+    if (enrollment.status === EnrollmentStatus.COMPLETED) {
+      return enrollment;
+    }
+
+    enrollment.status = EnrollmentStatus.COMPLETED;
+    enrollment.completedAt = new Date();
+    return enrollment.save();
   }
 
   async findByStudentId(studentId: string): Promise<EnrollmentDocument[]> {

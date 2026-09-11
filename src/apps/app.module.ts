@@ -17,6 +17,7 @@ import { CategoriesModule } from './categories/categories.module';
 import { CoursesModule } from './courses/courses.module';
 import { EnrollmentsModule } from './enrollments/enrollments.module';
 import { InstructorsModule } from './instructors/instructors.module';
+import { LessonProgressModule } from './lesson-progress/lesson-progress.module';
 import { LessonsModule } from './lessons/lessons.module';
 import { OrdersModule } from './orders/orders.module';
 import { SubscriptionPlansModule } from './subscription-plans/subscription-plans.module';
@@ -39,6 +40,7 @@ import { UsersModule } from './users/users.module';
     InstructorsModule,
     CoursesModule,
     LessonsModule,
+    LessonProgressModule,
     EnrollmentsModule,
     OrdersModule,
     SubscriptionPlansModule,

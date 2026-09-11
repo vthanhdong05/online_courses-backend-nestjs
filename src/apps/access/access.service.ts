@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { forwardRef, Inject, Injectable } from '@nestjs/common';
 import { CoursesService } from '../courses/courses.service';
 import { EnrollmentsService } from '../enrollments/enrollments.service';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
@@ -7,6 +7,7 @@ import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 export class AccessService {
   constructor(
     private readonly enrollmentsService: EnrollmentsService,
+    @Inject(forwardRef(() => CoursesService))
     private readonly coursesService: CoursesService,
     private readonly subscriptionsService: SubscriptionsService,
   ) {}
